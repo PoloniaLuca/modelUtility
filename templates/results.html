@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        {% include 'head.html' %}
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js"
+                integrity="sha512-JjFeUD2H//RHt+DjVf1BTuy1X5ZPtMl0svQ3RopX641DWoSilJ89LsFGq4Sw/6BSBfULqUW/CfnVopV5CfvRXA=="
+                crossorigin="anonymous"
+                referrerpolicy="no-referrer"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.0/css/bootstrap.min.css" integrity="sha256-/ykJw/wDxMa0AQhHDYfuMEwVb4JHMx9h4jD4XvHqVzU=" crossorigin="anonymous" />
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        <link href="/static/css/reprdeg.css" rel="stylesheet">
+        <title>Results | {{ constants.sitetitle }}</title>
+        <style>
+            table{
+                text-align:center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            {% include 'header.html' %}
+            <ul class="nav nav-tabs">
+                <li class="active"><a data-toggle="tab" href="#metrics_table_tab">Metrics Table</a></li>
+                <li><a data-toggle="tab" href="#metrics_graph_tab">Metrics Graph</a></li>
+                <li><a data-toggle="tab" href="#decision_curve_tab">Decision Curve</a></li>
+            </ul>
+
+            <div class="tab-content">
+                <div id="metrics_table_tab" class="tab-pane fade in active">
+                    <div class="container-fluid border bg-white border-top-0 px-5 pt-5 mb-5">
+                        <div class="row mb-5">
+                            <div class="col-md-12">
+                                <div>
+                                    <h4>
+                                        Metrics Table
+                                    </h4>
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr id="header_row"></tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr id="value_row"></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="metrics_graph_tab" class="tab-pane fade">
+                    <div class="container-fluid border bg-white border-top-0 px-5 pt-5 mb-5">
+                        <div class="row mb-5">
+                            <div class="col-md-12">
+                                <div>
+                                    <h4>
+                                        Metrics Graph
+                                    </h4>
+                                    <div id="metricsGraph" style="width:100%;min-width:500px;margin:auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="decision_curve_tab" class="tab-pane fade">
+                    <div class="container-fluid border bg-white border-top-0 px-5 pt-5 mb-5">
+                        <div class="row mb-5">
+                            <div class="col-md-12">
+                                <div>
+                                    <h4>
+                                        Decision Curve
+                                    </h4>
+                                    <div id="decisionCurve" style="width:100%;min-width:500px;margin:auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="text-left informative">
+                        <p>How to read these results:</p>
+                        <br>
+                        <ul id="metrics_desc">
+                            <li id= "wu_desc"></li>
+                            <li id= "nb_desc"></li>
+                            <li id= "acc_desc"></li>
+                            <li id= "balanced_acc_desc"></li>
+                            <li id= "auc_desc"></li>
+                            <li id= "sens_desc"></li>
+                            <li id= "spec_desc"></li>
+                            <li id= "f1_desc"></li>
+                        </ul>
+                        <br>
+                    </div>
+                </div>
+            </div>
+            <!-- <div class="row justify-content-center mb-5">
+                <a href="/" class="btn btn-info ">Back</a>
+            </div> -->
+            <br>
+			{% include 'footer.html' %}
+        </div>
+        {% include 'metatool.html' %}
+    </body>
+
+    <script type="text/javascript">
+        const metrics_name = {  "wu" : "Weighted Utility (wU)",
+                                "nb25" : "Standardized\nnet_benefit (tau = 0.25)",
+                                "nb50" : "Standardized\nnet_benefit (tau = 0.50)",
+                                "nb75" : "Standardized\nnet_benefit (tau = 0.75)",
+                                "acc" : "Accuracy",
+                                "balanced_acc" : "Balanced Accuracy",
+                                "auc" : "AUC",
+                                "sens" : "Sensitivity",
+                                "spec" : "Specificity",
+                                "f1" : "F1"
+                            };
+
+        var language = {
+            eng: {
+            title: "Model Utility",
+            scope: "Online tool to evaluate the usefulness of a classifier decision support system, as a function of a performance evaluation metric (weighted utility).",
+            wu_desc: "<b>" + metrics_name["wu"] + "</b>"  + ": utility metric that considers both the relevance (e.g., complexity, rarity) perceived by users and the risks associated with the validation cases to measure utility.",
+            nb_desc: "<b>Net benefit</b>: This utility metric balances the benefits and harms of a decision model, expressed on the same scale. It is computed at various thresholds (e.g., 0.25, 0.50, 0.75) to assess performance across different levels of trade-off between benefits and harms.",
+            acc_desc: "<b>" + metrics_name["acc"] + "</b>" + ": this metric indicates the proportion of correct decisions made by a model compared to all decisions made.",
+            balanced_acc_desc: "<b>" + metrics_name["balanced_acc"] + "</b>" + ": this metric adjusts standard accuracy to account for the unequal distribution of classes. It equals the raw accuracy in balanced datasets but is especially useful in imbalanced situations as it represents the average of sensitivity and specificity.",
+            auc_desc: "<b>" + metrics_name["auc"] + "</b>" + ":  that is the area under the Receiver Operating Characteristic (ROC) curve; this metric evaluates a model's ability to distinguish between classes across all possible thresholds. It essentially measures the likelihood that the model correctly ranks a randomly chosen positive instance higher than a randomly chosen negative one.",
+            sens_desc: "<b>" + metrics_name["sens"] + "</b>" + ": this metric quantifies the percentage of actual positive cases correctly identified by the model, often referred to as the true positive rate.",
+            spec_desc: "<b>" + metrics_name["spec"] + "</b>" + ": this metric measures the percentage of actual negative cases that the model correctly identifies, effectively capturing the true negative rate.",
+            f1_desc: "<b>" + metrics_name["f1"] + "</b>" + ": this combines positive predictive value (PPV, also known as precision) and sensitivity (also known as recall) into a single metric. It provides a balanced measure of a model’s accuracy, particularly useful when the classes are imbalanced. The F1 score is the harmonic mean of PPV and sensitivity, emphasizing both the identification of positive cases and the correct classification of negatives."
+    	}}
+
+        function load_language(l = "eng") {
+    		if(typeof language[l] === "undefined"){
+    			l="eng";
+    		}
+    		//set_cookie("language", l, 30);
+    		for (const key in language[l]) {
+    			element = document.getElementById(key)
+    			if (element) {
+    			  element.innerHTML = language[l][key];
+    			}
+    		}
+    	}
+
+    	var cookie_language = "eng";
+    	load_language(cookie_language);
+
+
+        $(document).ready(function() {
+            generateTable();
+            generateGraph();
+            generateCurve();
+        });
+
+
+        function generateTable(){
+            var headerRow = document.getElementById("header_row");
+            //fill the header
+            for (const key in metrics_name) {
+                var headerCell = document.createElement("th");
+                headerCell.setAttribute("scope", "col");
+                headerCell.innerHTML = metrics_name[key];
+                headerRow.appendChild(headerCell);
+            }
+            //fill value row
+            var valueRow = document.getElementById("value_row");
+            {% for val in metrics.values() %}
+                var valueCell = document.createElement("td");
+                valueCell.setAttribute("scope", "col");
+                console.log({{ val|tojson }});
+                var value = {{val|tojson}};
+                if(!isNaN(value))
+                    value = value.toFixed(3);
+                valueCell.innerHTML = value;
+                valueRow.appendChild(valueCell);
+            {% endfor %}
+        }
+
+        function generateGraph(){
+            //create marker for each metric
+            const wu = {
+                name: metrics_name["wu"],
+                x: [{{metrics["wu"]}}],
+                y:[metrics_name["wu"]],
+                mode: 'markers',
+                marker: {
+                    size: 12,
+                    color: ['blue'],
+                    symbol: ['diamond']
+                },
+                hoverinfo:'x'
+            };
+
+            const acc = {
+                name: metrics_name["acc"],
+                x: [{{metrics["acc"]}}],
+                y:[metrics_name["acc"]],
+                mode: 'markers',
+                marker: {
+                    color: ['orange'],
+                    size: 12,
+                    symbol: ['circle']
+                },
+                hoverinfo:'x'
+            };
+
+            const balanced_acc = {
+                name: metrics_name["balanced_acc"],
+                x: [{{metrics["balanced_acc"]}}],
+                y:[metrics_name["balanced_acc"]],
+                mode: 'markers',
+                marker: {
+                    color: ['green'],
+                    size: 12,
+                    symbol: ['circle']
+                },
+                hoverinfo:'x'
+            };
+            var x_val;
+            var auc_val = {{metrics["auc"]|tojson}};
+            if (auc_val == '-')
+                x_val = [];
+            else
+                x_val = [auc_val];
+            const auc = {
+                name: metrics_name["auc"],
+                x: x_val,
+                y:[metrics_name["auc"]],
+                mode: 'markers',
+                marker: {
+                    color: ['red'],
+                    size: 12,
+                    symbol: ['circle']
+                },
+                hoverinfo:'x'
+            };
+
+            const sens = {
+                name: metrics_name["sens"],
+                x: [{{metrics["sens"]}}],
+                y:[metrics_name["sens"]],
+                mode: 'markers',
+                marker: {
+                    color: ['purple'],
+                    size: 12,
+                    symbol: ['circle']
+                },
+                hoverinfo:'x'
+            };
+
+            const spec = {
+                name: metrics_name["spec"],
+                x: [{{metrics["spec"]}}],
+                y:[metrics_name["spec"]],
+                mode: 'markers',
+                marker: {
+                    color: ['brown'],
+                    size: 12,
+                    symbol: ['circle']
+                },
+                hoverinfo:'x'
+            };
+
+            const f1 = {
+                name: metrics_name["f1"],
+                x: [{{metrics["f1"]}}],
+                y:[metrics_name["f1"]],
+                mode: 'markers',
+                marker: {
+                    color: ['pink'],
+                    size: 12,
+                    symbol: ['circle']
+                },
+                hoverinfo:'x'
+            };
+
+            const nb25 = {
+              name: metrics_name["nb25"],
+              x: [{{metrics["nb25"]}}],
+              y:[metrics_name["nb25"]],
+              mode: 'markers',
+              marker: {
+                color: ['grey'],
+                size: 12,
+                symbol: ['diamond']
+
+              },
+              hoverinfo:'x'
+            };
+
+            const nb50 = {
+              name: metrics_name["nb50"],
+              x: [{{metrics["nb50"]}}],
+              y:[metrics_name["nb50"]],
+              mode: 'markers',
+              marker: {
+                color: ['yellow'],
+                size: 12,
+                symbol: ['diamond']
+
+              },
+              hoverinfo:'x'
+            };
+
+            const nb75 = {
+              name: metrics_name["nb75"],
+              x: [{{metrics['nb75']}}],
+              y:[metrics_name["nb75"]],
+              mode: 'markers',
+              marker: {
+                color: ['cyan'],
+                size: 12,
+                symbol: ['diamond']
+
+              },
+              hoverinfo:'x'
+            };
+
+            const data = [wu, nb25, nb50, nb75, acc, balanced_acc, auc, sens, spec, f1];
+
+            const layout = {
+                  title: "model utility metrics",
+                  hovermode: 'closest',
+                  width: '100%',
+                  xaxis: {range: [0, 1],
+                          dtick:0.1,
+                          autorange: true},
+
+                  yaxis:{automargin: true,
+                         yref: "paper",
+                         autorange: "reversed"}
+                  //hovermode: 'y'
+            };
+
+            const config = {
+                responsive: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['select2d','lasso2d','toggleSpikelines', 'hoverClosestCartesian', 'autoScale2d', 'toggleHover']
+            };
+
+            Plotly.newPlot('metricsGraph', data, layout, config);
+        }
+
+        function generateCurve(){
+            const standard_xArray = {{decision_curve["Standardized_net_benefit"]["x"]}};
+            const standard_yArray = {{decision_curve["Standardized_net_benefit"]["y"]}};
+            const none_xArray = {{decision_curve["Treat_none"]["x"]}};
+            const none_yArray = {{decision_curve["Treat_none"]["y"]}};
+            const all_xArray = {{decision_curve["Treat_all"]["x"]}};
+            const all_yArray = {{decision_curve["Treat_all"]["y"]}};
+            // Define Data
+            const data = [
+                { x: standard_xArray, y: standard_yArray, mode:"lines", name:"Decision Model"},
+                { x: none_xArray, y: none_yArray, mode:"lines", name:"Treat none"},
+                { x: all_xArray, y: all_yArray, mode:"lines", name:"Treat all"}
+            ];
+
+            // Define Layout
+            const layout = {
+                title: "Standardized net benefit decision curve",
+                width: '100%',
+                xaxis: {range: [0, 1],
+                        dtick:0.1,
+                        autorange: true,
+                        title: "Threshold"
+
+                },
+                yaxis: {range: [-0.5, 1],
+                        dtick:0.1,
+                        title: "Standardized net_benefit",
+                        automargin: true,
+                        yref: "paper",
+                }
+            };
+
+
+            const config = {
+                responsive: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['select2d','lasso2d','toggleSpikelines', 'hoverClosestCartesian', 'autoScale2d', 'toggleHover']
+            };
+            // Display using Plotly
+            Plotly.newPlot("decisionCurve", data, layout, config);
+        }
+
+        </script>

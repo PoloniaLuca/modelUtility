@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	    {% include 'head.html' %}
+	    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"
+            integrity="sha512-RXf+QSDCUQs5uwRKaDoXt55jygZZm2V++WUZduaU/Ui/9EGp3f/2KZVahFZBKGH0s774sd3HmrhUy+SgOFQLVQ=="
+            crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.form/4.3.0/jquery.form.min.js"
+            integrity="sha384-qlmct0AOBiA2VPZkMY3+2WqkHtIQ9lSdAsAn5RUJD/3vA5MKDgSGcdmIv4ycVxyn"
+            crossorigin="anonymous"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.0/css/bootstrap.min.css" integrity="sha256-/ykJw/wDxMa0AQhHDYfuMEwVb4JHMx9h4jD4XvHqVzU=" crossorigin="anonymous" />
+	        <link href="/static/css/reprdeg.css" rel="stylesheet">
+	        <title>Home | {{ constants.sitetitle }}</title>
+	</head>
+	<body>
+		<div class="container">
+		    <div class="row justify-content-center mb-4">
+                <div class="col-12 text-center">
+                    <h1 id="title"></h1>
+                    <h1 id="title"></h1>
+				    <p class="text-muted mb-5" id="scope"></p>
+                </div>
+            </div>
+			<form id="form"
+				class="form-upload"
+				action="{{ url_for('custom_mode') }}"
+				method="POST"
+				enctype="multipart/form-data">
+                <a class="btn btn-lg btn-primary btn-block"
+               href="{{ url_for('test_mode') }}"
+               role="button"
+               id="demo"></a>
+				<p id="description" class="text-left"></p>
+				<ul>
+				    <li id="desc_csv">
+				    </li>
+				    <li id="desc_ths"></li>
+				</ul>
+				<p id ="desc5" class="text-left"></p>
+				<p class="text-right font-italic" id="mandatory"></p>
+				<div class="custom-file">
+					<input id="firstCSV"
+						   type="file"
+						   class="custom-file-input"
+						   name="file1"
+						   accept=".csv"
+						   required
+						   pattern="^.+.(csv)$">
+					<label class="custom-file-label"
+						   for="customFile"
+						   id="firstFile"
+						   style="clear: both"
+						   required
+						   pattern="^.+.(csv)$"></label>
+				   <small class="form-text text-muted">Select or drag and drop the input file</small>
+				</div>
+                <div id="input_csv_alert" class="alert alert-warning alert-dismissible fade show" role="alert" hidden>
+                  <p id="alert_msg"></p>
+                </div>
+				<div class="input-group">
+					<span class="input-group-text">ths (scalar)</span>
+					<input type="number" id="ths_scalar" class="form-control" name="ths_scalar" min="0" max="0.99" step="0.01">
+				</div>
+				<br>
+				<br>
+				<button id="calcBtn" class="btn btn-lg btn-primary btn-block" type="submit" name="submit" value="submit"></button>
+			  </form>
+			  <br>
+			  {% include 'footer.html' %}
+        </div>
+        {% include 'metatool.html' %}
+    </body>
+<script>
+
+    var language = {
+      eng: {
+          title: "Model Utility",
+          scope: "Online tool to evaluate the usefulness of a classifier decision support system, as a function of a performance evaluation metric (weighted utility).",
+    	  demo: "Try the tool (with predefined data)",
+    	  description: "To compute the metrics the tool requires one mandatory csv file and optionally a scalar threshold value.<br>"+
+    	               "Here follows the information you need:<br>",
+    	  desc_csv:    "<b>input.csv </b>(<a href='{{ url_for('static', filename='testfiles/test.csv') }}' target='_blank'>Example</a>): a <i>MxN</i> csv (N between 2 and 4).<br>" +
+    	               "The following columns must be present,  and their names included as headers:<br>" +
+    	               "<ul> <li id='desc_y_true'></li> <li id='desc_y_proba'></li> </ul>" +
+    	               "The file may also contain some optional columns:" +
+    	               "<ul> <li id='desc_relevance'></li> <li id='desc_threshold'></li> </ul>" +
+    	               "<br>",
+    	  desc_y_true: "<b>y_true</b>: represents the ground truth. Each value must be 0 (negative) or 1 (positive).",
+    	  desc_y_proba: "<b>y_proba</b>: represents the probabilities predicted for the positive class. Each value must be between 0 and 1.",
+    	  desc_relevance: "<b>relevance</b>: represents the weights of individual cases. Each value must be between 0 and 1.",
+    	  desc_threshold: "<b>threshold</b>: represents the threshold values to be applied to the various cases. Each value must be between 0 and 1.\n",
+
+    	  desc_ths: "<b>threshold (scalar)</b>: optional scalar value ranging from 0 to 1 to serve as a threshold.<br>If a consistent threshold applies to all cases to decide upon, this value can replace the threshold column in the input CSV file.<br>If the threshold column is not present, please enter this value. By default, if not specified either here or in the CSV file, the threshold will be set to 0.5 for all cases.<br>" +
+    	            "The threshold reflects the probability at which the decision-maker is indifferent between the potential benefit of a true positive and the potential harm of a false positive, that is a sort of level of tolerance, or preference, for classifying an outcome as positive.<br>" +
+                    "Essentially, it's where the benefits of predicting a positive outcome equal the risks associated with a wrong prediction.",
+    	  desc5: "Available metrics:  wu, net benefit(tau 0.25, 0.50, 0.75), sensitivity, specificity, accuracy, balanced accuracy, AUC, F1",
+    	  file: "Please upload your input files",
+    	  firstFile: "Select the input.csv file *",
+          secondFile: "Select the y_proba.csv file *",
+    	  thirdFile: "Select the relevances.csv file",
+    	  fourthFile: "select the ths.csv file",
+    	  mandatory: "Files marked with * are mandatory.",
+    	  calcBtn: "Generate results",
+    	  message: "Files are allowed only in .csv extension! Try again"
+	  }}
+
+    var file = document.getElementById('firstCSV');
+
+    controlCSV = function (e) {
+      var fileName = e.target.files[0].name;
+      var nextSibling = e.target.nextElementSibling;
+      nextSibling.innerText = fileName;
+      var ext = this.value.match(/\.([^\.]+)$/)[1];
+      switch (ext) {
+        case 'csv':
+          document.getElementById('input_csv_alert').hidden = true;
+          nextSibling.classList.remove('input_file_color_error');
+          if (!document.getElementById('firstFile').classList.contains('input_file_color_error'))
+            document.getElementById('message').hidden = true;
+          break;
+
+        default:
+          generateAlert("Files are allowed only in .csv extension! Try again");
+          this.reportValidity();
+          file.value = "";
+      }
+    };
+
+    file.onchange = controlCSV;
+
+  function load_language(l = "eng") {
+		if(typeof language[l] === "undefined"){
+			l="eng";
+		}
+		//set_cookie("language", l, 30);
+		for (const key in language[l]) {
+			element = document.getElementById(key)
+			if (element) {
+			  element.innerHTML = language[l][key];
+			}
+		}
+	}
+	var cookie_language = "eng";
+	load_language(cookie_language);
+
+    stopLoop = false;
+    function loop(previousTime = 0, w = 0){
+        window.requestAnimationFrame((currentTimeInMillisecond) => {
+            let deltaTimeInMillisecond = currentTimeInMillisecond - previousTime;
+            previousTime = currentTimeInMillisecond;
+            if(deltaTimeInMillisecond>0){
+                let fps = 1000/deltaTimeInMillisecond;
+                w += (100-w)/500;
+                //console.log(w, (100-w), fps);
+                $('.progress-bar').width(w + "%");
+            }
+            if (stopLoop == true) {
+              $('.progress-bar').width('0%');
+              stopLoop = false
+              return
+            }
+
+            if(w < 100){
+                loop(previousTime, w);
+            }
+        });
+    }
+
+	$(document).ready(function(){
+        $('#form').submit(function(event){
+            event.preventDefault();
+            readFile();
+        });
+    });
+
+	function readFile () {
+        readFile2('firstCSV', function () {
+            processData(this.result)
+        });
+    }
+
+	function readFile2 (id, callback) {
+        const file = document.getElementById(id);
+        var reader = new FileReader();
+        reader.onload = callback;
+        reader.readAsBinaryString(file.files[0]);
+    }
+
+    //Check if the file structure is correct
+	function processData(allText) {
+        var allTextLines = allText.split(/\r\n|\n/);
+        var header = allTextLines[0].split(',');
+        //check header
+        if(check_header(header) == false)
+            console.log("header error");
+        else{
+            //check content
+            allTextLines.shift()
+            if(check_content(allTextLines, header) == true)
+                chiama_ajax();
+        }
+	}
+
+function chiama_ajax () {
+        $('#calcBtn').html('<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>Calculating...').addClass('disabled');
+        $('#form').ajaxSubmit({
+            beforeSubmit:function(){
+                $('.progress-bar').width('0%');
+            },
+            uploadProgress: function(event, position, total, percentageComplete)
+            {
+                loop()
+            },
+            success:function(data){
+                function ReplaceContent(NC) {
+                    document.open();
+                    document.write(NC);
+                    document.close();
+                }
+                ReplaceContent(data);
+            },
+            error: function(data ) {
+              stopLoop = true;
+
+              alert("Your data seems to contain missing or invalid values, please check and upload again.");
+              $('#calcBtn').html('Generate results').removeClass('disabled');
+
+             },
+            resetForm: true
+        });
+        return false;
+    }
+
+//Check if the file has an acceptable header
+    function check_header(header){
+        var mandatory_columns = ["y_true", "y_proba"]
+        var optional_columns = ["threshold", "relevance"]
+
+        var header_len = header.length;
+        var mandatory_len = mandatory_columns.length;
+        var optional_len = optional_columns.length;
+
+        if(header_len <= mandatory_len + optional_len && header_len >= mandatory_len){
+            for(var col=0; col<header_len; col++){
+                var pos = mandatory_columns.indexOf(header[col]);
+                if(pos != -1){
+                //mandatory column ok
+                  mandatory_columns.splice(pos, 1)
+                  mandatory_len--;
+                }
+                else{
+                    pos = optional_columns.indexOf(header[col]);
+                    if(pos != -1){
+                        //optional column ok
+                        optional_columns.splice(pos, 1)
+                        optional_len--;
+                    }
+                    else{
+                        //Invalid column
+                        console.log("ERROR: '" + header[col] + "' is an inadmissible name for a column. Please check your file and try again.");
+                        generateAlert("ERROR: '" + header[col] + "' is an inadmissible name for a column. Please check your file and try again.");
+                        return false;
+                    }
+                }
+            }
+            if (mandatory_len == 0)
+                return true;
+            else{
+                //missing mandatory column
+                console.log("ERROR: missing mandatory column '" + mandatory_columns + "'. Please check your file and try again.");
+                generateAlert("ERROR: missing mandatory column '" + mandatory_columns + "'. Please check your file and try again.");
+                return false;
+            }
+        }
+        else{
+            //header length is incorrect
+            console.log("ERROR: header length is incorrect, the length of your file header is " + header_len + ", it must be between " + mandatory_len + " and " + (mandatory_len + optional_len) + ". Please check your file and try again.");
+            generateAlert("ERROR: header length is incorrect, the length of your file header is " + header_len + ", it must be between " + mandatory_len + " and " + (mandatory_len + optional_len) + ". Please check your file and try again.");
+            return false;
+        }
+    }
+
+
+
+    function check_content(content, header){
+        console.log(content);
+        var content_len = content.length;
+        if(content_len == 0){
+            console.log("ERROR: your file is empty. Please check your file and try again.");
+            generateAlert("ERROR: your file is empty. Please check your file and try again.");
+            return false;
+        }
+
+        var header_len = header.length;
+        for(var raw=0; raw<content_len; raw++){
+            console.log("raw " + raw);
+            var values = content[raw].split(',');
+            if(values.length > header_len){
+                console.log("ERROR: to many values in raw (" + (raw+1) + "). Please check your file and try again.");
+                generateAlert("ERROR: to many values in raw (" + (raw+1) + "). Please check your file and try again.");
+                return false;
+            }
+            else if(values.length < header_len){
+                console.log("ERROR: missing values in raw (" + (raw+1) + "). Please check your file and try again.");
+                generateAlert("ERROR: missing values in raw (" + (raw+1) + "). Please check your file and try again.");
+                return false;
+            }
+            else{
+                for(var col=0; col<header_len; col++){
+                    if (!check_value(values[col], header[col])){
+                        generateAlert("ERROR: incompatible value in raw (" + (raw+1) + ") , column (" + header[col] + "). Please check your file and try again.")
+                        console.log("ERROR: incompatible value in raw (" + (raw+1) + ") , column (" + header[col] + "). Please check your file and try again.");
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    function generateAlert(msg){
+        document.getElementById("alert_msg").innerHTML = msg;
+        document.getElementById("input_csv_alert").hidden = false;
+    }
+
+    function check_value(val, type){
+        console.log("val: " + val +  " col: " + type + "type: ");
+        val = parseFloat(val);
+        switch(type){
+            case "y_true":
+                return (val == 0 || val == 1);
+            case "y_proba":
+                return (val >= 0 && val <= 1);
+            case "threshold":
+                return (val >= 0 && val < 1);
+            case "relevance":
+                return (val >= 0 && val <= 1);
+            default:
+                return false;
+        }
+    }
+
+
+	$('#demo').click(function () {
+      $('#demo').html('<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span> Calculating test results...').addClass('disabled');
+    });
+
+	</script>
